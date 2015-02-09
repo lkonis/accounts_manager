@@ -10,9 +10,10 @@ import time
 import re
 
 accounts_db = list()
-
+textfilename = "my_accounts.txt"
+outfilename = "out_test.db"
+filename = "acc_db.db" #outfilename
 def load_data():
-    filename = "acc_db.db"
     fi = open(filename,'rb')
     print "database file: " + filename
     all_lines = fi.readlines()
@@ -34,6 +35,8 @@ def import_new_rec(*new_rec_argv):
         return
     new_rec_argv = new_rec_argv[0]
     if type(new_rec_argv) is str:
+        # remove end-of-line
+        new_rec_argv = str.strip( new_rec_argv)
         # try split line in two
         new_rec_argv = re.compile(",\s*").split(new_rec_argv)
         # if succeeded, combine again
@@ -55,6 +58,9 @@ def import_new_rec(*new_rec_argv):
     
     ts = time.time()
     new_rec_with_time = [name, ts, ts, user, passw, comment]
+
+    # remove empty strings
+    new_rec_with_time = filter(None, new_rec_with_time)
     # test if this is new or existing one
     exist_already=0
     for indx, account in enumerate(accounts_db):
@@ -74,22 +80,32 @@ def import_new_rec(*new_rec_argv):
         print "New record added: " + name
     else:
         print "updated existing record: " + name
+
+def save_data():
+    fi = open(outfilename,'w')
+    for line in accounts_db:
+        print line
+        fi.write(', '.join(map(str, line)) + "\n")
+    fi.close()
+
     
 
 if __name__ == '__main__':
-  load_data()
+    # load the data base - do we need it?
+    # why not loading data base just when we want to update?
+    #  i.e. inside import_new_rec
+    load_data()
+    #load lines from existing account file'
+    fi = open(textfilename,'rb')
+    if (fi):
+        print "file: " + textfilename + " is loaded"
+        lines = fi.readlines()
+        fi.close()
+    # import new records to the database
+    for new_rec in lines:
+        import_new_rec(new_rec)
 
-  'load lines from existing account file'
-  filename = "my_accounts.txt"
-  fi = open(filename,'rb')
-  if (fi):
-      print "file: " + filename + " is loaded"
-      lines = fi.readlines()
-      fi.close()
-      for new_rec in lines:
-          import_new_rec(new_rec)
-      print accounts_db
-      
+    save_data()
       
       
       
