@@ -5,16 +5,10 @@ Created on Mon Feb 02 15:27:16 2015
 @author: lkonis
 """
 
-import datetime
+#import datetime
 import time
+import re
 
-
-name = "account 1"
-ins_date = datetime.date.today()
-mod_date = datetime.date.today()
-user  = "lkonis"
-passw = "1234"
-comment = ""
 accounts_db = list()
 
 def load_data():
@@ -31,13 +25,24 @@ def load_data():
             continue
         new_rec_with_time = [new_rec[0], ts, ts, new_rec[1], new_rec[2], " ".join(new_rec[3:])]
         accounts_db.append(new_rec_with_time)
+        
 def import_new_rec(*new_rec_argv):
     N=len(new_rec_argv)
     user = passw = comment = ""
-    if N==0:
+    if (N<1) | (len(new_rec.strip())==0):
         print "empty record"
         return
     new_rec_argv = new_rec_argv[0]
+    if type(new_rec_argv) is str:
+        # try split line in two
+        new_rec_argv = re.compile(",\s*").split(new_rec_argv)
+        # if succeeded, combine again
+        if len(new_rec_argv)==2:
+            name = new_rec_argv[0]
+            new_rec_argv = new_rec_argv[1].split(' ')
+            new_rec_argv.insert(0, name)
+        else:
+            new_rec_argv = re.compile("\s*").split(new_rec_argv[0])
     N=len(new_rec_argv)
     if N>=1:
         name=new_rec_argv[0]
@@ -46,7 +51,7 @@ def import_new_rec(*new_rec_argv):
     if N>=3:
         passw=new_rec_argv[2]
     if N>=4:
-        comment=new_rec_argv[2]
+        comment=' '.join(new_rec_argv[3:])
     
     ts = time.time()
     new_rec_with_time = [name, ts, ts, user, passw, comment]
@@ -74,7 +79,20 @@ def import_new_rec(*new_rec_argv):
 if __name__ == '__main__':
   load_data()
 
-  import_new_rec() 
-  new_rec =['gmail','lko']
-  import_new_rec(new_rec)
-  
+  'load lines from existing account file'
+  filename = "my_accounts.txt"
+  fi = open(filename,'rb')
+  if (fi):
+      print "file: " + filename + " is loaded"
+      lines = fi.readlines()
+      fi.close()
+      for new_rec in lines:
+          import_new_rec(new_rec)
+      print accounts_db
+      
+      
+      
+      
+      
+      
+      
