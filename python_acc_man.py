@@ -10,7 +10,6 @@ import re
 import sys
 import time
 import os
-import cipher
 
 class acc_main:
 #accounts_db = list()
@@ -32,7 +31,8 @@ class acc_main:
         for line in all_lines:
             new_rec = re.compile(",\s*").split(line.strip())
             if len(new_rec)<4:
-                print "record that starts with " + new_rec[0] + " has not enough details"
+                if not('abcd1234' in new_rec):
+                    print "record that starts with " + new_rec[0] + " has not enough details"
                 continue
             if not(new_rec[1].replace(" ","").isdigit()):
                 print "record must have integer as second arg " + new_rec[1] + " is not a digit"
@@ -48,58 +48,94 @@ class acc_main:
     #        new_rec_with_time = [new_rec[0], new_rec[1], new_rec[2], new_rec[3], new_rec[4], " ".join(comment)]
             local_accounts_db.append(new_rec)
         return(local_accounts_db)
+
+    #    managing the whole command-line interface
     def add_new_rec(self):
         if len(sys.argv) < 2:
             
+            my_pass = raw_input("Enter your password (also if no .coded file exists): [<CR> to ignore password]")
+            if my_pass=="":
+                nopass=True
+                nosavepass=True
+            else:
+                nopass=False
+                nosavepass=False
+
+            if not(nopass):
+                # use this for coded file name
+                db_filename_cd = self.internal_db_filename + ".coded"
+                if not(os.path.isfile(db_filename_cd)):
+                    if (os.path.isfile(self.internal_db_filename)):
+                        print ("coded file " + db_filename_cd + " doesn't exist\nUsing the uncoded version " + self.internal_db_filename + " instead")
+                        nopass=True
+                    else:
+                        print ("coded file " + db_filename_cd + " and uncoded version " + self.internal_db_filename + "do not exist\n Exiting...")
+                        sys.exit(1)
+
+            if not(nopass):
+                print "trying to decode data file " + db_filename_cd
+                import cipher
+                c = cipher.cipher()
+                c.run_endec(db_filename_cd, my_pass)
+                
+                # read decoded file and remove 3 lines
+                db_filename_dec = self.internal_db_filename + ".decoded"
+                fi = open(db_filename_dec,'rb')
+                all_lines = fi.readlines()
+                fi.close()
+                all_lines = all_lines[3:] # remove header lines from decoding
+
+                # detect whether decoding was successful
+                if not('abcd1234' in all_lines[0]):
+                    print("unsuccessful decoding. probably password is wrong, quiting....")
+                    sys.exit(2)
+                    
+                # write decoded data into file
+                fi = open(self.internal_db_filename, 'w')
+                fi.writelines(all_lines[3:])
+                fi.close()
+            else:
+                if not(os.path.isfile(self.internal_db_filename)):
+                    print ("can't find uncoded database file " + self.internal_db_filename + ", exist....")
+                    sys.exit(1)
+                if nosavepass:
+                    print "ignoring passwords...\n"
+                else:
+                    print "using password to cipher output"
+                
+            # check correctness of data (that is, if passsword was correct)
             an = raw_input("Enter account name: ")
             if an=="":
                 return
-            c = cipher.cipher()
-            my_pass = "1234"
-            # use this for coded file name
-            db_filename_cd = self.internal_db_filename + ".coded"
-            # use this for decoded file name
-            db_filename_dec = self.internal_db_filename + ".decoded"
-            print "trying to decode data file " + db_filename_cd
-            c.run_endec(db_filename_cd, my_pass)
-            # read decoded file and remove 3 lines
-            fi = open(db_filename_dec,'rb')
-            all_lines = fi.readlines()
-            fi.close()
             
-            # write decoded data into file
-            fi = open(self.internal_db_filename, 'w')
-            fi.writelines(all_lines[3:])
-            fi.close()
 
             accounts_db = self.load_data(self.internal_db_filename)
             # check if account exists already
             for indx, account in enumerate(accounts_db):
                 exist_acc_name = account[0]
                 if (an==exist_acc_name):
-                    aq = raw_input("\nAccount name \"" +an+"\" already exists in database\n\nDo you want to update it? [n for no or <enter> for accept]\n>")
+                    aq = raw_input("\nAccount name \"" +an+"\" already exists in database\n\nDo you want to update it? [n for no or <enter> for accept]: ")
                     if (aq=="n"):
-                        print("no updates")
+                        print("\nNo updates\n")
+                        if not(nopass):
+                            if (os.path.isfile(self.internal_db_filename)):
+                                os.remove(self.internal_db_filename)
+                            if (os.path.isfile(db_filename_dec)):
+                                os.remove(db_filename_dec)
                         return
                         
             aun = raw_input("Enter user name: ")
             aup = raw_input("Enter user password: ")
             acm = raw_input("Enter any comment: ")
+
             new_rec_argv = an +", "+aun+" "+aup+" "+acm
             accounts_db = self.import_new_rec(accounts_db, new_rec_argv)
-            ret_str = "ADD NEW REC: New account added to database: " + an
-            self.save_db_data(accounts_db, self.internal_db_filename)
+            print("\nsaving db")
+            self.save_db_data(accounts_db, self.internal_db_filename, my_pass)
+            print("\nsaving text file " + self.out_txt_filename)
             self.save_txt_data(accounts_db, self.out_txt_filename)
-            print(ret_str)
             
     def import_new_rec(self, accounts_db, new_rec_argv):
-        save_db_when_done=0
-        if len(sys.argv) > 1:
-            # import database file
-            new_rec_argv = ' '.join(sys.argv[2:])
-            db_filename = sys.argv[1]
-            accounts_db = self.load_data(db_filename)
-            save_db_when_done=1
         new_rec_argv = re.compile(",\s*").split(new_rec_argv.strip())
         N=len(new_rec_argv)
         user = passw = comment = ""
@@ -160,29 +196,28 @@ class acc_main:
                 
         if not(exist_already):
             accounts_db.append(new_rec_with_time)
-            print "New record added: " + name
+            print "\nNew record added: " + name
         else:
-            print "updated existing record: " + name
+            print "\nUpdated existing record: " + name
             
-        if save_db_when_done:
-            print("save_db_when_done is on")
-            self.save_db_data(accounts_db, db_filename)
-        else:
-            print("save_db_when_done is off")
-            return(accounts_db)
+        return(accounts_db)
     
-    def save_db_data(self, accounts_db, db_filename):
-        c = cipher.cipher()
-        
+    def save_db_data(self, accounts_db, db_filename, my_pass):
+        if my_pass=="nopass":
+            nopass = True
+        else:
+            nopass = False
         fi = open(db_filename,'w')
         for line in accounts_db:
             #print line
             fi.write(', '.join(map(str, line)).strip() + "\n")
         fi.close()
-        my_pass = "1234"
-        c.run_endec(db_filename, my_pass)
-        print "trying to remove file " + db_filename
-        os.remove(db_filename)
+        if not(nopass):
+            import cipher
+            c = cipher.cipher()
+            c.run_endec(db_filename, my_pass)
+            print "trying to remove file " + db_filename
+            os.remove(db_filename)
     
     def save_txt_data(self, accounts_db, out_txt_filename):
         import datetime
@@ -220,29 +255,8 @@ if __name__ == '__main__':
     acc = acc_main()
     print("***** done defining class acc_main ****\n")
     acc.add_new_rec()
-    print("*** done add new rec ****\n")
     #acc.save_db_data()
     #print("*** done save db data ****\n")
     print("*** going to execute exit() ****\n")
     sys.exit()
-    print("*** I though i was exit() ****\n")
 
-    accounts_db = acc.load_data(acc.internal_db_filename)
-    #load lines from existing account file'
-    fi = open(acc.textfilename,'rb')
-    if (fi):
-#        print "file: " + textfilename + " is loaded"
-        lines = fi.readlines()
-        fi.close()
-    # import new records to the database
-    #for new_rec in lines:
-    #    import_new_rec(accounts_db, new_rec)
-
-    
-    acc.save_txt_data(accounts_db, acc.out_txt_filename)
-      
-      
-      
-      
-      
-      
