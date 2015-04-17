@@ -10,6 +10,7 @@ import re
 import sys
 import time
 import os
+import cipher
 
 class acc_main:
 #accounts_db = list()
@@ -19,7 +20,7 @@ class acc_main:
 #    name, number of updates, [time1, user1, pass1], ..., comments
     textfilename = "my_accounts.txt"
     internal_db_filename = "acc_db.db"
-    out_txt_filename = "out_test.txt"
+    out_txt_filename = "my_accounts.txt"
     def load_data(self, db_filename):
     
         fi = open(db_filename,'rb')
@@ -57,6 +58,7 @@ class acc_main:
             if my_pass=="":
                 nopass=True
                 nosavepass=True
+                my_pass="nopass"
             else:
                 nopass=False
                 nosavepass=False
@@ -69,12 +71,12 @@ class acc_main:
                         print ("coded file " + db_filename_cd + " doesn't exist\nUsing the uncoded version " + self.internal_db_filename + " instead")
                         nopass=True
                     else:
-                        print ("coded file " + db_filename_cd + " and uncoded version " + self.internal_db_filename + "do not exist\n Exiting...")
+                        print ("coded file " + db_filename_cd + " and uncoded version " + self.internal_db_filename + " do not exist\n Exiting...")
                         sys.exit(1)
 
             if not(nopass):
                 print "trying to decode data file " + db_filename_cd
-                import cipher
+
                 c = cipher.cipher()
                 c.run_endec(db_filename_cd, my_pass)
                 
@@ -83,20 +85,21 @@ class acc_main:
                 fi = open(db_filename_dec,'rb')
                 all_lines = fi.readlines()
                 fi.close()
-                all_lines = all_lines[3:] # remove header lines from decoding
+#                all_lines = all_lines[3:] # remove header lines from decoding
 
                 # detect whether decoding was successful
-                if not('abcd1234' in all_lines[0]):
+                if not('abcd1234' in all_lines[3]):
                     print("unsuccessful decoding. probably password is wrong, quiting....")
                     sys.exit(2)
+                
                     
                 # write decoded data into file
                 fi = open(self.internal_db_filename, 'w')
-                fi.writelines(all_lines[3:])
+                fi.writelines(all_lines[4:]) # remove header lines and checksum line from decoding
                 fi.close()
             else:
                 if not(os.path.isfile(self.internal_db_filename)):
-                    print ("can't find uncoded database file " + self.internal_db_filename + ", exist....")
+                    print ("You either expect to find uncoded database file " + self.internal_db_filename + ", or didn't put any password, exiting....")
                     sys.exit(1)
                 if nosavepass:
                     print "ignoring passwords...\n"
@@ -104,12 +107,23 @@ class acc_main:
                     print "using password to cipher output"
                 
             # check correctness of data (that is, if passsword was correct)
-            an = raw_input("Enter account name: ")
+            an = raw_input("Enter new or existing account name (<Enter> for decoding only): ")
             if an=="":
-                return
+                print "not adding anything, just decoding into text"
+                prepare_to_abandon=True
+            else:
+                prepare_to_abandon=False
             
 
             accounts_db = self.load_data(self.internal_db_filename)
+            
+            if prepare_to_abandon:
+                print("\nsaving text file " + self.out_txt_filename)
+                self.save_txt_data(accounts_db, self.out_txt_filename)
+                os.remove(self.internal_db_filename)
+                os.remove(db_filename_dec)
+                return
+
             # check if account exists already
             for indx, account in enumerate(accounts_db):
                 exist_acc_name = account[0]
@@ -138,7 +152,7 @@ class acc_main:
     def import_new_rec(self, accounts_db, new_rec_argv):
         new_rec_argv = re.compile(",\s*").split(new_rec_argv.strip())
         N=len(new_rec_argv)
-        user = passw = comment = ""
+        user = passw = ""
         if (N<1) | (len(new_rec_argv)==0):
             print "empty record"
             return
@@ -208,12 +222,14 @@ class acc_main:
         else:
             nopass = False
         fi = open(db_filename,'w')
+        # first line used as checksum for successful decoding later
+        fi.write('abcd1234\n')
+        
         for line in accounts_db:
             #print line
             fi.write(', '.join(map(str, line)).strip() + "\n")
         fi.close()
         if not(nopass):
-            import cipher
             c = cipher.cipher()
             c.run_endec(db_filename, my_pass)
             print "trying to remove file " + db_filename
@@ -255,8 +271,10 @@ if __name__ == '__main__':
     acc = acc_main()
     print("***** done defining class acc_main ****\n")
     acc.add_new_rec()
+
+   
+    
     #acc.save_db_data()
     #print("*** done save db data ****\n")
-    print("*** going to execute exit() ****\n")
     sys.exit()
 
