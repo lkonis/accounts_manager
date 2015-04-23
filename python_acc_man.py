@@ -32,11 +32,11 @@ def usage():
 def handle_args(argv):
     """ Handles arguments """
     try:
-        opts, args = getopt.getopt(argv, "h", ["help", "no-log", "debug", "change", "pass"])
+        opts = getopt.getopt(argv, "h", ["help", "no-log", "debug", "change", "pass"])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
-    for opt, arg in opts:
+    for opt in opts:
         if opt in ("-h", "--help"):
             usage()
             sys.exit()
@@ -73,10 +73,10 @@ class acc_main:
             new_rec = re.compile(",\s*").split(line.strip())
             if len(new_rec)<4:
                 if not('abcd1234' in new_rec):
-                    print "record that starts with " + new_rec[0] + " has not enough details"
+                    logger.warn("record that starts with " + new_rec[0] + " has not enough details")
                 continue
             if not(new_rec[1].replace(" ","").isdigit()):
-                print "record must have integer as second arg " + new_rec[1] + " is not a digit"
+                logger.warn( "record must have integer as second arg " + new_rec[1] + " is not a digit")
                 continue
             # extract comment
     #        comment = new_rec[int(new_rec[1])*3+2:]
@@ -106,14 +106,14 @@ class acc_main:
             db_filename_cd = self.internal_db_filename + ".coded"
             if not(os.path.isfile(db_filename_cd)):
                 if (os.path.isfile(self.internal_db_filename)):
-                    print ("coded file " + db_filename_cd + " doesn't exist\nUsing the uncoded version " + self.internal_db_filename + " instead")
+                    logger.info("coded file " + db_filename_cd + " doesn't exist\nUsing the uncoded version " + self.internal_db_filename + " instead")
                     nopass=True
                 else:
-                    print ("coded file " + db_filename_cd + " and uncoded version " + self.internal_db_filename + " do not exist\n Exiting...")
+                    logger.error("coded file " + db_filename_cd + " and uncoded version " + self.internal_db_filename + " do not exist\n Exiting...")
                     sys.exit(1)
 
         if not(nopass):
-            print "trying to decode data file " + db_filename_cd
+            logger.debug( "trying to decode data file " + db_filename_cd)
 
             c = cipher.cipher()
             c.run_endec(db_filename_cd, my_pass)
@@ -127,7 +127,7 @@ class acc_main:
 
             # detect whether decoding was successful
             if not('abcd1234' in all_lines[3]):
-                print("unsuccessful decoding. probably password is wrong, quiting....")
+                logger.error("unsuccessful decoding. probably password is wrong, quiting....")
                 sys.exit(2)
 
 
@@ -137,17 +137,17 @@ class acc_main:
             fi.close()
         else:
             if not(os.path.isfile(self.internal_db_filename)):
-                print ("You either expect to find uncoded database file " + self.internal_db_filename + ", or didn't put any password, exiting....")
+                logger.error("You either expect to find uncoded database file " + self.internal_db_filename + ", or didn't put any password, exiting....")
                 sys.exit(1)
             if nosavepass:
-                print "ignoring passwords...\n"
+                logger.info("ignoring passwords...")
             else:
-                print "using password to cipher output"
+                logger.warn("using password to cipher output")
 
-        # check correctness of data (that is, if passsword was correct)
+        # check correctness of data (that is, if password was correct)
         an = raw_input("Enter new or existing account name (<Enter> for decoding only): ")
         if an=="":
-            print "not adding anything, just decoding into text"
+            logger.warn("not adding anything, just decoding into text")
             prepare_to_abandon=True
         else:
             prepare_to_abandon=False
@@ -156,19 +156,19 @@ class acc_main:
         accounts_db = self.load_data(self.internal_db_filename)
 
         if prepare_to_abandon:
-            print("\nsaving text file " + self.out_txt_filename)
+            logger.debug("saving text file " + self.out_txt_filename)
             self.save_txt_data(accounts_db, self.out_txt_filename)
             os.remove(self.internal_db_filename)
             os.remove(db_filename_dec)
             return
 
         # check if account exists already
-        for indx, account in enumerate(accounts_db):
+        for account in enumerate(accounts_db):
             exist_acc_name = account[0]
             if (an==exist_acc_name):
                 aq = raw_input("\nAccount name \"" +an+"\" already exists in database\n\nDo you want to update it? [n for no or <enter> for accept]: ")
                 if (aq=="n"):
-                    print("\nNo updates\n")
+                    logger.warn("No updates")
                     if not(nopass):
                         if (os.path.isfile(self.internal_db_filename)):
                             os.remove(self.internal_db_filename)
@@ -182,9 +182,9 @@ class acc_main:
 
         new_rec_argv = an +", "+aun+" "+aup+" "+acm
         accounts_db = self.import_new_rec(accounts_db, new_rec_argv)
-        print("\nsaving db")
+        logger.info("saving db")
         self.save_db_data(accounts_db, self.internal_db_filename, my_pass)
-        print("\nsaving text file " + self.out_txt_filename)
+        logger.info("saving text file " + self.out_txt_filename)
         self.save_txt_data(accounts_db, self.out_txt_filename)
 
     def import_new_rec(self, accounts_db, new_rec_argv):
@@ -192,7 +192,7 @@ class acc_main:
         N=len(new_rec_argv)
         user = passw = ""
         if (N<1) | (len(new_rec_argv)==0):
-            print "empty record"
+            logger.warn("empty record")
             return
         #if isinstance(new_rec_argv, tuple):
         #    new_rec_argv = new_rec_argv[0]
@@ -248,9 +248,9 @@ class acc_main:
 
         if not(exist_already):
             accounts_db.append(new_rec_with_time)
-            print "\nNew record added: " + name
+            logger.info("New record added: " + name)
         else:
-            print "\nUpdated existing record: " + name
+            logger.info("Updated existing record: " + name)
 
         return(accounts_db)
 
@@ -270,7 +270,7 @@ class acc_main:
         if not(nopass):
             c = cipher.cipher()
             c.run_endec(db_filename, my_pass)
-            print "trying to remove file " + db_filename
+            logger.debug( "trying to remove file " + db_filename)
             os.remove(db_filename)
 
     def save_txt_data(self, accounts_db, out_txt_filename):
@@ -311,7 +311,7 @@ if __name__ == '__main__':
     logger.debug('This is debug only message')
 
     acc = acc_main()
-    print("***** done defining class acc_main ****\n")
+    logger.debug("***** done defining class acc_main ****\n")
     acc.add_new_rec()
 
 
