@@ -146,8 +146,11 @@ class acc_main:
 
         # check correctness of data (that is, if passsword was correct)
         an = raw_input("Enter new or existing account name (<Enter> for decoding only): ")
-        if an=="":
+        if (an==""):
             print "not adding anything, just decoding into text"
+            prepare_to_abandon=True
+        elif (an=="decode"):
+            print "not adding anything, just leaving decded version "
             prepare_to_abandon=True
         else:
             prepare_to_abandon=False
@@ -159,7 +162,8 @@ class acc_main:
             print("\nsaving text file " + self.out_txt_filename)
             self.save_txt_data(accounts_db, self.out_txt_filename)
             os.remove(self.internal_db_filename)
-            os.remove(db_filename_dec)
+            if (an==""):
+                os.remove(db_filename_dec)
             return
 
         # check if account exists already
