@@ -153,18 +153,24 @@ class acc_main:
         db_filename_dec, nopass, my_pass = self.load_coded_db()
         if CHANGE_PASS:
             my_pass = raw_input("Enter new password: ")
-
-
-        # check correctness of data (that is, if passsword was correct)
-        an = raw_input("Enter new or existing account name (<Enter> for decoding only): ")
-        if an=="":
-            logger.warn("not adding anything, just decoding into text")
-            prepare_to_abandon=True
-        elif (an=="decode"):
-            print "not adding anything, just leaving decded version "
-            prepare_to_abandon=True
+            confirm_new_pass = raw_input("Confirm new password: ")
+            if (confirm_new_pass==my_pass):
+                prepare_to_abandon=True
+            else:
+                print("Error: confirmed password doesn't match")
+                return
         else:
-            prepare_to_abandon=False
+    
+            # check correctness of data (that is, if passsword was correct)
+            an = raw_input("Enter new or existing account name (<Enter> for decoding only): ")
+            if an=="":
+                logger.warn("not adding anything, just decoding into text")
+                prepare_to_abandon=True
+            elif (logger.level == logging.DEBUG):
+                print "not adding anything, just leaving decoded version "
+                prepare_to_abandon=True
+            else:
+                prepare_to_abandon=False
 
 
         accounts_db = self.load_data(self.internal_db_filename)
@@ -173,11 +179,13 @@ class acc_main:
             if CHANGE_PASS:
                 logger.info("saving database with new password")
                 self.save_db_data(accounts_db, self.internal_db_filename, my_pass)
-            logger.debug("saving text file " + self.out_txt_filename)
-            self.save_txt_data(accounts_db, self.out_txt_filename)
-            os.remove(self.internal_db_filename)
-            if (an==""):
-                os.remove(db_filename_dec)
+            else:
+                logger.debug("saving text file " + self.out_txt_filename)
+                self.save_txt_data(accounts_db, self.out_txt_filename)
+                if os.path.exists(self.internal_db_filename):
+                    os.remove(self.internal_db_filename)
+                if (logger.level != logging.DEBUG) & os.path.exists(db_filename_dec):
+                    os.remove(db_filename_dec)
             return
 
         # check if account exists already
@@ -193,14 +201,20 @@ class acc_main:
                         if (os.path.isfile(db_filename_dec)):
                             os.remove(db_filename_dec)
                     return
+                ch_acc = raw_input("\nReplace account name [" +an+"]: ")
+                if (ch_acc==""):
+                    ch_acc=an
+                else:
+                    CHANGE_ACCOUNT=True
+                break
 
-        if CHANGE_ACCOUNT:
-            ch_acc = raw_input("Replace account name: ")
-        else:
-            ch_acc = ""
-        aun = raw_input("Enter user name: ")
-        aup = raw_input("Enter user password: ")
-        acm = raw_input("Enter any comment: ")
+        aun = raw_input("Enter user name: ["+account[3]+"]")
+        if (aun==""):
+            aun = account[3]
+        aup = raw_input("Enter user password: ["+account[4]+"]")
+        if (aup==""):
+            aup = account[4]
+        acm = raw_input("Enter any comment: []")
 
         new_rec_argv = an +", "+aun+" "+aup+" "+acm
         accounts_db = self.import_new_rec(accounts_db, new_rec_argv, ch_acc)
