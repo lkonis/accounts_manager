@@ -3,7 +3,7 @@
 Created on Mon Feb 02 15:27:16 2015
 
 @author: lkonis
-"""
+'"""
 
 #import datetime
 import re
@@ -13,13 +13,14 @@ import os
 import cipher
 import logging
 import getopt
-from cookielib import logger
+#from cookielib import logger
 
 logger = logging.getLogger('acc_man_log')
 logging.basicConfig()
 logger.setLevel(logging.WARN)
 CHANGE_ACCOUNT=False
 CHANGE_PASS=False
+DELETE_ACCOUNT=False
 
 def usage():
     """ Prints out usage information """
@@ -29,14 +30,20 @@ def usage():
     print "    --help -h:     This text"
     print "    --no-log:      don't print log"
     print "    --debug:       Print out extra debug information."
-    print "    --change:      change an account name"
     print "    --pass:        Replace password"
-
+    print "    --delete:"
+input_options = """
+    [0] quit
+    [1] add/change account details
+    [2] delete account
+    [3] change password
+    > [1] """
+    
 def handle_args(argv):
     """ Handles arguments """
     global CHANGE_ACCOUNT, CHANGE_PASS
     try:
-        opts, args = getopt.getopt(argv, "h", ["help", "no-log", "debug", "change", "pass"])
+        opts, args = getopt.getopt(argv, "h", ["help", "no-log", "debug", "pass"])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -44,9 +51,6 @@ def handle_args(argv):
         if opt in ("-h", "--help"):
             usage()
             sys.exit()
-        elif opt in "--change":
-            logger.warn(' changing account name')
-            CHANGE_ACCOUNT=True
         elif opt in "--pass":
             logger.warn(' changing password')
             CHANGE_PASS=True
@@ -147,10 +151,23 @@ class acc_main:
             else:
                 logger.warn("using password to cipher output")
         return db_filename_dec, nopass, my_pass
+    def delete_account(self, an):
+        logger.warn('doing nothing, need to delete accout: '+an)
 
-    def add_new_rec(self):
-        global CHANGE_ACCOUNT, CHANGE_PASS
+    def handle_database(self):
+        global CHANGE_ACCOUNT, DELETE_ACCOUNT, CHANGE_PASS
         db_filename_dec, nopass, my_pass = self.load_coded_db()
+        
+        in_opt = raw_input(input_options)
+        if (in_opt == '0'):
+            sys.exit(0)
+        elif (in_opt == '2'):
+            DELETE_ACCOUNT=True
+        elif (in_opt == '3'):
+            CHANGE_PASS=True
+
+        prepare_to_abandon=False
+
         if CHANGE_PASS:
             my_pass = raw_input("Enter new password: ")
             confirm_new_pass = raw_input("Confirm new password: ")
@@ -159,8 +176,10 @@ class acc_main:
             else:
                 print("Error: confirmed password doesn't match")
                 return
+        elif DELETE_ACCOUNT:
+            an = raw_input("Enter account to delete:")
+            
         else:
-    
             # check correctness of data (that is, if passsword was correct)
             an = raw_input("Enter new or existing account name (<Enter> for decoding only): ")
             if an=="":
@@ -189,35 +208,62 @@ class acc_main:
             return
 
         # check if account exists already
+        if DELETE_ACCOUNT:
+            found_to_delete=False
+
         for indx, account in enumerate(accounts_db):
             exist_acc_name = account[0]
             if (an==exist_acc_name):
-                aq = raw_input("\nAccount name \"" +an+"\" already exists in database\n\nDo you want to update it? [n for no or <enter> for accept]: ")
-                if (aq=="n"):
-                    logger.warn("No updates")
-                    if not(nopass):
-                        if (os.path.isfile(self.internal_db_filename)):
-                            os.remove(self.internal_db_filename)
-                        if (os.path.isfile(db_filename_dec)):
-                            os.remove(db_filename_dec)
-                    return
-                ch_acc = raw_input("\nReplace account name [" +an+"]: ")
-                if (ch_acc==""):
-                    ch_acc=an
+                if DELETE_ACCOUNT:
+                    found_to_delete=True
+                    indx_to_delete=indx
+                    break
                 else:
-                    CHANGE_ACCOUNT=True
-                break
-
-        aun = raw_input("Enter user name: ["+account[3]+"]")
-        if (aun==""):
-            aun = account[3]
-        aup = raw_input("Enter user password: ["+account[4]+"]")
-        if (aup==""):
-            aup = account[4]
-        acm = raw_input("Enter any comment: []")
-
-        new_rec_argv = an +", "+aun+" "+aup+" "+acm
-        accounts_db = self.import_new_rec(accounts_db, new_rec_argv, ch_acc)
+                    aq = raw_input("\nAccount name \"" +an+"\" already exists in database\n\nDo you want to update it? [n for no, <enter> for accept or d for delete]: ")
+                    if (aq=="n"):
+                        logger.warn("No updates")
+                        if not(nopass):
+                            if (os.path.isfile(self.internal_db_filename)):
+                                os.remove(self.internal_db_filename)
+                            if (os.path.isfile(db_filename_dec)):
+                                os.remove(db_filename_dec)
+                        return
+                    if (aq=="d"):
+                        found_to_delete=True
+                        indx_to_delete=indx
+                        DELETE_ACCOUNT=True
+                        break
+                    else:
+                        ch_acc = raw_input("\nReplace account name [" +an+"]: ")
+                        if (ch_acc==""):
+                            ch_acc=an
+                        else:
+                            CHANGE_ACCOUNT=True
+                        break
+        if not (an==exist_acc_name):
+            account=['','','','user','pass']
+            ch_acc=''
+        if DELETE_ACCOUNT:
+            if not found_to_delete:
+                logger.error("couldn't find account named "+an)
+                sys.exit(2)
+            sure_ = raw_input('Are you sure you want to delete "'+ an + '"? [n]')
+            if sure_=='y':
+                accounts_db.pop(indx_to_delete) # this is actuall deleting of record
+            else:
+                logger.warn('abandon...')
+                sys.exit(0)
+        else:
+            aun = raw_input("Enter user name: ["+account[3]+"]")
+            if (aun==""):
+                aun = account[3]
+            aup = raw_input("Enter user password: ["+account[4]+"]")
+            if (aup==""):
+                aup = account[4]
+            acm = raw_input("Enter any comment: ")
+    
+            new_rec_argv = an +", "+aun+" "+aup+" "+acm
+            accounts_db = self.import_new_rec(accounts_db, new_rec_argv, ch_acc)
         logger.info("saving db")
         self.save_db_data(accounts_db, self.internal_db_filename, my_pass)
         logger.info("saving text file " + self.out_txt_filename)
@@ -241,7 +287,8 @@ class acc_main:
         # if succeeded, combine again
         if len(new_rec_argv)==2:
             name = new_rec_argv[0]
-            new_rec_argv = new_rec_argv[1].split(' ')
+            split_rec = new_rec_argv[1].split(' ')
+            new_rec_argv = [' '.join(split_rec[0:-1]),split_rec[-1]]
             new_rec_argv.insert(0, name)
         else:
             new_rec_argv = re.compile("\s*").split(new_rec_argv[0])
@@ -352,7 +399,7 @@ if __name__ == '__main__':
 
     acc = acc_main()
     logger.debug("***** done defining class acc_main ****\n")
-    acc.add_new_rec()
+    acc.handle_database()
 
 
 
