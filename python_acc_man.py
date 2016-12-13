@@ -148,6 +148,7 @@ class acc_main:
                 sys.exit(1)
             if nosavepass:
                 logger.info("ignoring passwords...")
+                db_filename_dec = ""
             else:
                 logger.warn("using password to cipher output")
         return db_filename_dec, nopass, my_pass
