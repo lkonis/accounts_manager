@@ -13,6 +13,7 @@ import os
 import cipher
 import logging
 import getopt
+import crypto_cipher
 #from cookielib import logger
 
 logger = logging.getLogger('acc_man_log')
@@ -21,6 +22,8 @@ logger.setLevel(logging.WARN)
 CHANGE_ACCOUNT=False
 CHANGE_PASS=False
 DELETE_ACCOUNT=False
+encode_date = ''
+
 
 def usage():
     """ Prints out usage information """
@@ -82,8 +85,10 @@ class acc_main:
         for line in all_lines:
             new_rec = re.compile(",\s*").split(line.strip())
             if len(new_rec)<4:
-                if not('abcd1234' in new_rec):
+                if not('File encoded' in new_rec[0]):
                     logger.warn("record that starts with " + new_rec[0] + " has not enough details")
+                else:
+                    self.encode_date = new_rec[0]
                 continue
             if not(new_rec[1].replace(" ","").isdigit()):
                 logger.warn( "record must have integer as second arg " + new_rec[1] + " is not a digit")
@@ -123,7 +128,7 @@ class acc_main:
                     sys.exit(1)
         if not (nopass):
             logger.debug("trying to decode data file " + db_filename_cd)
-            c = cipher.cipher()
+            c = crypto_cipher.cipher()
             c.run_endec(db_filename_cd, my_pass)
             # read decoded file and remove 3 lines
             db_filename_dec = self.internal_db_filename + ".decoded"
@@ -135,12 +140,12 @@ class acc_main:
 
                 #                all_lines = all_lines[3:] # remove header lines from decoding
             # detect whether decoding was successful
-            if not ('abcd1234' in all_lines[3]):
+            if not ('File encoded' in all_lines[0]):
                 logger.error("unsuccessful decoding. probably password is wrong, quiting....")
                 sys.exit(2)
             # write decoded data into file
             fi = open(self.internal_db_filename, 'w')
-            fi.writelines(all_lines[4:]) # remove header lines and checksum line from decoding
+            fi.writelines(all_lines[0:]) # remove header lines and checksum line from decoding
             fi.close()
         else:
             if not (os.path.isfile(self.internal_db_filename)):
@@ -187,7 +192,7 @@ class acc_main:
                 logger.warn("not adding anything, just decoding into text")
                 prepare_to_abandon=True
             elif (logger.level == logging.DEBUG):
-                print "not adding anything, just leaving decoded version "
+                print "DEBUG MODE!: not adding anything, just leaving decoded version "
                 prepare_to_abandon=True
             else:
                 prepare_to_abandon=False
@@ -262,8 +267,12 @@ class acc_main:
             if (aup==""):
                 aup = account[4]
             acm = raw_input("Enter any comment: ")
-    
-            new_rec_argv = an +", "+aun+" "+aup+" "+acm
+            if (acm==""):
+                if not (an == exist_acc_name):
+                    acm = 'no comment'
+                else:
+                    acm = account[-1]
+            new_rec_argv = an +","+aun+" "+aup+" "+acm
             accounts_db = self.import_new_rec(accounts_db, new_rec_argv, ch_acc)
         logger.info("saving db")
         self.save_db_data(accounts_db, self.internal_db_filename, my_pass)
@@ -272,7 +281,7 @@ class acc_main:
 
     def import_new_rec(self, accounts_db, new_rec_argv, ch_acc):
         global CHANGE_ACCOUNT, CHANGE_PASS
-        new_rec_argv = re.compile(",\s*").split(new_rec_argv.strip())
+        new_rec_argv = new_rec_argv.split(',') #re.compile(",\s*").split(new_rec_argv.strip())
         N=len(new_rec_argv)
         user = passw = ""
         if (N<1) | (len(new_rec_argv)==0):
@@ -289,24 +298,25 @@ class acc_main:
         if len(new_rec_argv)==2:
             name = new_rec_argv[0]
             split_rec = new_rec_argv[1].split(' ')
-            new_rec_argv = [' '.join(split_rec[0:-1]),split_rec[-1]]
-            new_rec_argv.insert(0, name)
+            #new_rec_argv = [' '.join(split_rec[0:-1]),split_rec[-1]]
+            #new_rec_argv.insert(0, name)
+            split_rec.insert(0, name)
         else:
             new_rec_argv = re.compile("\s*").split(new_rec_argv[0])
 
 
         comment="no comment"
-        N=len(new_rec_argv)
+        N=len(split_rec)
         if N<3:
             return
         if N>=1:
-            name=new_rec_argv[0]
+            name=split_rec[0]
         if N>=2:
-            user=new_rec_argv[1]
+            user=split_rec[1]
         if N>=3:
-            passw=new_rec_argv[2]
+            passw=split_rec[2]
         if N>=4:
-            comment=' '.join(new_rec_argv[3:])
+            comment=' '.join(split_rec[3:])
 
         ts = time.time()
         new_rec_with_time = [name, 1, ts, user, passw, comment]
@@ -349,14 +359,21 @@ class acc_main:
             nopass = False
         fi = open(db_filename,'w')
         # first line used as checksum for successful decoding later
-        fi.write('abcd1234\n')
+        # fi.write('abcd1234\n')
 
+        line = []
         for line in accounts_db:
             #print line
+            strline = ', '.join(map(str, line)).strip()
+            if (((len(line) - 2) % 3) == 0):
+                if ('comment' in (strline)):
+                    line[-1] = 'no password'
+                line.append('no comment')
             fi.write(', '.join(map(str, line)).strip() + "\n")
+
         fi.close()
         if not(nopass):
-            c = cipher.cipher()
+            c = crypto_cipher.cipher()
             c.run_endec(db_filename, my_pass)
             logger.debug( "trying to remove file " + db_filename)
             os.remove(db_filename)
@@ -366,6 +383,8 @@ class acc_main:
         fi = open(out_txt_filename,'w')
         now = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S')
         fi.write('Account file auto-generated at: ' + now + '\n')
+        fi.write(self.encode_date + '\n')
+
         fi.write('='*54 +'\n\n\n\n')
 
         for line in accounts_db:

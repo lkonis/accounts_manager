@@ -7,10 +7,10 @@ Upgraded Mon March 2, 2015
 
 
 import sys
-import time
 from encrypt import *
 
-class cipher:
+# this class contains method
+class cipher(encryption):
     mode='ENC'              # mode can be encoder or decoder
     def run_endec(self, *args):
       if len(args)<1:
@@ -50,9 +50,9 @@ class cipher:
 
       # HERE call the new PyCrypto
       if self.mode=='ENC':
-          encrypt(getKey(password), filename)
+          self.encrypt(self.getKey(password), filename)
       else:
-          decrypt(getKey(password), filename)
+          self.decrypt(self.getKey(password), filename)
 
       if self.mode=='ENC':
           print "Cipher: Done encoding into file: "  + outfile + "\n"

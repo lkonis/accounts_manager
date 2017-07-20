@@ -1,3 +1,6 @@
+*coded
+*.pyc
+*.swp
 *.db*
 *my_acc*
 cipher*
