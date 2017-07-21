@@ -88,7 +88,7 @@ class acc_main:
                 if not('File encoded' in new_rec[0]):
                     logger.warn("record that starts with " + new_rec[0] + " has not enough details")
                 else:
-                    self.encode_date = new_rec[0]
+                    self.encode_date = ', '.join(new_rec)
                 continue
             if not(new_rec[1].replace(" ","").isdigit()):
                 logger.warn( "record must have integer as second arg " + new_rec[1] + " is not a digit")
@@ -364,11 +364,13 @@ class acc_main:
         line = []
         for line in accounts_db:
             #print line
+            ''' used to correct corrupted lines with missing password or 'no comments'
             strline = ', '.join(map(str, line)).strip()
             if (((len(line) - 2) % 3) == 0):
                 if ('comment' in (strline)):
                     line[-1] = 'no password'
                 line.append('no comment')
+            '''
             fi.write(', '.join(map(str, line)).strip() + "\n")
 
         fi.close()
@@ -381,7 +383,7 @@ class acc_main:
     def save_txt_data(self, accounts_db, out_txt_filename):
         import datetime
         fi = open(out_txt_filename,'w')
-        now = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.strftime(datetime.datetime.now(), '%d-%m-%Y %H:%M:%S')
         fi.write('Account file auto-generated at: ' + now + '\n')
         fi.write(self.encode_date + '\n')
 
