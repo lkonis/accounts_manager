@@ -7,9 +7,12 @@ The interface however for importing/exporting, managing and browsing is describe
 
 Files
 -----
-There are two files (at least) that are required here:
+There are four files (at least) that are required here:
 * python_acc_man.py       - python file containing code for all interfaces
-* acc_db.db (encripted file) - data file that can be written and read using the encrypt/decrypt methods
+* crypto_cipher.py        - python file containing call to an encryption file
+* acc_db.db.coded (encripted file) - data file that can be written and read using the encrypt/decrypt methods
+* a forth file (encrypt.py) that should implement encryption/decryption 
+  - the latter should implement cipher class with encrypt/decrypt methods. it is not stored in git reporsitory and is up to every user how to implement it
 
 python File metadata (at the moment, only one field really requried here)
 ----------------------------------
