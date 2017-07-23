@@ -10,7 +10,7 @@ import re
 import sys
 import time
 import os
-import cipher
+from crypto_cipher import cipher
 import logging
 import getopt
 import crypto_cipher
