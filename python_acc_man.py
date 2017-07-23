@@ -24,7 +24,6 @@ CHANGE_PASS=False
 DELETE_ACCOUNT=False
 encode_date = ''
 
-
 def usage():
     """ Prints out usage information """
     print ""
@@ -41,7 +40,7 @@ input_options = """
     [2] delete account
     [3] change password
     > [1] """
-    
+
 def handle_args(argv):
     """ Handles arguments """
     global CHANGE_ACCOUNT, CHANGE_PASS
@@ -62,8 +61,6 @@ def handle_args(argv):
         elif opt in "--no-log":
             print(" *** no log printing ***")
             logger.setLevel(level=logging.ERROR)
-
-
 
 class acc_main:
 #accounts_db = list()
@@ -88,7 +85,7 @@ class acc_main:
                 if not('File encoded' in new_rec[0]):
                     logger.warn("record that starts with " + new_rec[0] + " has not enough details")
                 else:
-                    self.encode_date = new_rec[0]
+                    self.encode_date = ', '.join(new_rec)
                 continue
             if not(new_rec[1].replace(" ","").isdigit()):
                 logger.warn( "record must have integer as second arg " + new_rec[1] + " is not a digit")
@@ -163,7 +160,7 @@ class acc_main:
     def handle_database(self):
         global CHANGE_ACCOUNT, DELETE_ACCOUNT, CHANGE_PASS
         db_filename_dec, nopass, my_pass = self.load_coded_db()
-        
+
         in_opt = raw_input(input_options)
         if (in_opt == '0'):
             sys.exit(0)
@@ -184,7 +181,7 @@ class acc_main:
                 return
         elif DELETE_ACCOUNT:
             an = raw_input("Enter account to delete:")
-            
+
         else:
             # check correctness of data (that is, if passsword was correct)
             an = raw_input("Enter new or existing account name (<Enter> for decoding only): ")
@@ -196,7 +193,6 @@ class acc_main:
                 prepare_to_abandon=True
             else:
                 prepare_to_abandon=False
-
 
         accounts_db = self.load_data(self.internal_db_filename)
 
@@ -304,7 +300,6 @@ class acc_main:
         else:
             new_rec_argv = re.compile("\s*").split(new_rec_argv[0])
 
-
         comment="no comment"
         N=len(split_rec)
         if N<3:
@@ -364,11 +359,13 @@ class acc_main:
         line = []
         for line in accounts_db:
             #print line
+            ''' used to correct corrupted lines with missing password or 'no comments'
             strline = ', '.join(map(str, line)).strip()
             if (((len(line) - 2) % 3) == 0):
                 if ('comment' in (strline)):
                     line[-1] = 'no password'
                 line.append('no comment')
+            '''
             fi.write(', '.join(map(str, line)).strip() + "\n")
 
         fi.close()
@@ -381,7 +378,7 @@ class acc_main:
     def save_txt_data(self, accounts_db, out_txt_filename):
         import datetime
         fi = open(out_txt_filename,'w')
-        now = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.strftime(datetime.datetime.now(), '%d-%m-%Y %H:%M:%S')
         fi.write('Account file auto-generated at: ' + now + '\n')
         fi.write(self.encode_date + '\n')
 
@@ -407,8 +404,6 @@ class acc_main:
 
         fi.close()
 
-
-
 if __name__ == '__main__':
     # load the data base - do I need it?
     # why not loading data base just when we want to update?
@@ -421,9 +416,6 @@ if __name__ == '__main__':
     logger.debug("***** done defining class acc_main ****\n")
     acc.handle_database()
 
-
-
     #acc.save_db_data()
     #print("*** done save db data ****\n")
     sys.exit()
-
