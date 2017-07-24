@@ -13,8 +13,6 @@ import os
 from crypto_cipher import cipher
 import logging
 import getopt
-import crypto_cipher
-#from cookielib import logger
 
 logger = logging.getLogger('acc_man_log')
 logging.basicConfig()
@@ -125,7 +123,7 @@ class acc_main:
                     sys.exit(1)
         if not (nopass):
             logger.debug("trying to decode data file " + db_filename_cd)
-            c = crypto_cipher.cipher()
+            c = cipher()
             c.run_endec(db_filename_cd, my_pass)
             # read decoded file and remove 3 lines
             db_filename_dec = self.internal_db_filename + ".decoded"
@@ -370,7 +368,7 @@ class acc_main:
 
         fi.close()
         if not(nopass):
-            c = crypto_cipher.cipher()
+            c = cipher()
             c.run_endec(db_filename, my_pass)
             logger.debug( "trying to remove file " + db_filename)
             os.remove(db_filename)
