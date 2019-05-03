@@ -254,7 +254,7 @@ class acc_main:
                 logger.warn('abandon...')
                 sys.exit(0)
         else:
-            aun = raw_input("Enter user name: ["+account[3]+"]")
+            aun = raw_input("Enter user name (no commas or spaces): ["+account[3]+"]")
             if (aun==""):
                 aun = account[3]
             aup = raw_input("Enter user password: ["+account[4]+"]")
