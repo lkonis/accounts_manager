@@ -1,3 +1,5 @@
+#! /usr/bin/python
+
 # -*- coding: utf-8 -*-
 """
 Created on Mon Feb 02 15:27:16 2015
@@ -19,7 +21,7 @@ logging.basicConfig()
 logger.setLevel(logging.WARN)
 CHANGE_ACCOUNT=False
 CHANGE_PASS=False
-DELETE_ACCOUNT=False
+DELETE_RECORD=False
 encode_date = ''
 
 def usage():
@@ -35,7 +37,7 @@ def usage():
 input_options = """
     [0] quit
     [1] add/change account details
-    [2] delete account
+    [2] delete a record
     [3] change password
     > [1] """
 
@@ -144,7 +146,7 @@ class acc_main:
             fi.close()
         else:
             if not (os.path.isfile(self.internal_db_filename)):
-                logger.error("You either expect to find uncoded database file " + self.internal_db_filename + ", or didn't put any password, exiting....")
+                logger.error("You either expect to find unencoded database file " + self.internal_db_filename + ", or didn't put any password, exiting....")
                 sys.exit(1)
             if nosavepass:
                 logger.info("ignoring passwords...")
@@ -152,20 +154,31 @@ class acc_main:
             else:
                 logger.warn("using password to cipher output")
         return db_filename_dec, nopass, my_pass
+
     def delete_account(self, an):
         logger.warn('doing nothing, need to delete accout: '+an)
 
     def handle_database(self):
-        global CHANGE_ACCOUNT, DELETE_ACCOUNT, CHANGE_PASS
+        global CHANGE_ACCOUNT, DELETE_RECORD, CHANGE_PASS
         db_filename_dec, nopass, my_pass = self.load_coded_db()
 
         in_opt = raw_input(input_options)
         if (in_opt == '0'):
             sys.exit(0)
         elif (in_opt == '2'):
-            DELETE_ACCOUNT=True
+            DELETE_RECORD=True
         elif (in_opt == '3'):
             CHANGE_PASS=True
+        if in_opt=="":
+            in_opt='1'
+        else:
+            try:
+                if (int(in_opt)>3 or int(in_opt)<0):
+                    print('bad input')
+                    return
+            except ValueError as e:
+                print("wrong input")
+                sys.exit()
 
         prepare_to_abandon=False
 
@@ -177,7 +190,7 @@ class acc_main:
             else:
                 print("Error: confirmed password doesn't match")
                 return
-        elif DELETE_ACCOUNT:
+        elif DELETE_RECORD:
             an = raw_input("Enter account to delete:")
 
         else:
@@ -208,13 +221,13 @@ class acc_main:
             return
 
         # check if account exists already
-        if DELETE_ACCOUNT:
+        if DELETE_RECORD:
             found_to_delete=False
 
-        for indx, account in enumerate(accounts_db):
-            exist_acc_name = account[0]
+        for indx, record in enumerate(accounts_db):
+            exist_acc_name = record[0]
             if (an==exist_acc_name):
-                if DELETE_ACCOUNT:
+                if DELETE_RECORD:
                     found_to_delete=True
                     indx_to_delete=indx
                     break
@@ -231,7 +244,7 @@ class acc_main:
                     if (aq=="d"):
                         found_to_delete=True
                         indx_to_delete=indx
-                        DELETE_ACCOUNT=True
+                        DELETE_RECORD=True
                         break
                     else:
                         ch_acc = raw_input("\nReplace account name [" +an+"]: ")
@@ -240,10 +253,11 @@ class acc_main:
                         else:
                             CHANGE_ACCOUNT=True
                         break
+
         if not (an==exist_acc_name):
-            account=['','','','user','pass']
+            record=['', '', '', 'user', 'pass']
             ch_acc=''
-        if DELETE_ACCOUNT:
+        if DELETE_RECORD:
             if not found_to_delete:
                 logger.error("couldn't find account named "+an)
                 sys.exit(2)
@@ -254,18 +268,18 @@ class acc_main:
                 logger.warn('abandon...')
                 sys.exit(0)
         else:
-            aun = raw_input("Enter user name: ["+account[3]+"]")
+            aun = raw_input("Enter user name: [" + record[3] + "]")
             if (aun==""):
-                aun = account[3]
-            aup = raw_input("Enter user password: ["+account[4]+"]")
+                aun = record[3]
+            aup = raw_input("Enter user password: [" + record[4] + "]")
             if (aup==""):
-                aup = account[4]
+                aup = record[4]
             acm = raw_input("Enter any comment: ")
             if (acm==""):
                 if not (an == exist_acc_name):
                     acm = 'no comment'
                 else:
-                    acm = account[-1]
+                    acm = record[-1]
             new_rec_argv = an +","+aun+" "+aup+" "+acm
             accounts_db = self.import_new_rec(accounts_db, new_rec_argv, ch_acc)
         logger.info("saving db")
