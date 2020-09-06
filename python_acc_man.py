@@ -15,6 +15,8 @@ import os
 from crypto_cipher import cipher
 import logging
 import getopt
+import readline
+readline.parse_and_bind("tab: complete")
 
 logger = logging.getLogger('acc_man_log')
 logging.basicConfig()
@@ -23,6 +25,17 @@ CHANGE_ACCOUNT=False
 CHANGE_PASS=False
 DELETE_RECORD=False
 encode_date = ''
+
+# create auto completer
+
+
+class VolcabCompleter:
+    def __init__(self,volcab):
+        self.volcab = volcab
+
+    def complete(self,text,state):
+        results =  [x+" " for x in self.volcab if text in x.lower()] + [None]
+        return results[state]
 
 def usage():
     """ Prints out usage information """
@@ -181,6 +194,12 @@ class acc_main:
                 sys.exit()
 
         prepare_to_abandon=False
+        # load database of existing accounts and put it into tab-completion list
+        accounts_db = self.load_data(self.internal_db_filename)
+        acc_words = [x[0] for x in accounts_db]
+        completer = VolcabCompleter(acc_words)
+        readline.set_completer(completer.complete)
+
 
         if CHANGE_PASS:
             my_pass = raw_input("Enter new password: ")
@@ -205,7 +224,6 @@ class acc_main:
             else:
                 prepare_to_abandon=False
 
-        accounts_db = self.load_data(self.internal_db_filename)
 
         if prepare_to_abandon:
             if CHANGE_PASS:
@@ -268,11 +286,7 @@ class acc_main:
                 logger.warn('abandon...')
                 sys.exit(0)
         else:
-<<<<<<< HEAD
             aun = raw_input("Enter user name: [" + record[3] + "]")
-=======
-            aun = raw_input("Enter user name (no commas or spaces): ["+account[3]+"]")
->>>>>>> d9092d7ff7d53d67200678559135c40eb7e5ab4b
             if (aun==""):
                 aun = record[3]
             aup = raw_input("Enter user password: [" + record[4] + "]")
